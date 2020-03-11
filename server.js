@@ -12,6 +12,14 @@ db.once('open', () => console.log('connected to database'))
 app.use(express.json())
 
 const disclaimersRouter = require('./routes/disclaimers')
+const vehiclesRouter = require('./routes/vehicles')
+const paymentsRouter = require('./routes/payments')
+const leaseAgreementsRouter = require('./routes/leaseAgreements')
+
 app.use('/disclaimers', disclaimersRouter)
+app.use('/vehicles', vehiclesRouter)
+app.use('/payments', paymentsRouter)
+app.use('/leaseAgreements', leaseAgreementsRouter)
+
 
 app.listen(3000, () => console.log('server started'))
