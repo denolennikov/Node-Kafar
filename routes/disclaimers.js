@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const Disclaimer = require('../models/disclaimer')
+const kafkaSend = require('../service/kafka-producer');
 
 // Getting all subscribers
 router.get('/', async (req, res) => {
@@ -21,7 +22,22 @@ router.post('/', async (req, res) => {
 
   try {
     const newDisclaimer = await disclaimer.save()
-    res.status(201).json(newDisclaimer)
+    const {_id} = newDisclaimer
+    let queue = {
+      entity: 'Disclaimer',
+      id: _id,
+      before: null,
+      after: newDisclaimer
+    }
+    kafkaSend.sendRecord(queue, function(err, data){
+      if(err){
+        console.log('error: ', err)
+      }
+      else{
+        res.status(201).json(newDisclaimer)
+      }
+    })
+    
   } catch (err) {
     res.status(400).json({ message: err.message })
   }
@@ -41,19 +57,47 @@ router.put('/:id', getDisclaimer, async (req, res) => {
   if (req.body.body != null) {
     res.disclaimer.body = req.body.body
   }
+
   try {
+    const {_id} = res.disclaimer
+    let queue = {
+      entity: 'Disclaimer',
+      id: _id,
+      before: res.disclaimer
+    }
     const updatedDisclaimer = await res.disclaimer.save()
-    res.json(updatedDisclaimer)
-  } catch {
+    Object.assign(queue, {after: updatedDisclaimer})
+    kafkaSend.sendRecord(queue, function(err, data){
+      if(err){
+        console.log('error: ', err)
+      }
+      else{
+        res.json(updatedDisclaimer)
+      }
+    })
+  } catch (err) {
     res.status(400).json({ message: err.message })
   }
-
 })
 // Deleting one disclaimer
 router.delete('/:id', getDisclaimer, async (req, res) => {
   try {
-    await res.disclaimer.remove()
-    res.json({ message: 'Deleted This Disclaimer' })
+    const disclaimer = await res.disclaimer.remove()
+    const {_id} = disclaimer
+    let queue = {
+      entity: 'Disclaimer',
+      id: _id,
+      before: disclaimer,
+      after: null
+    }
+    kafkaSend.sendRecord(queue, function(err, data){
+      if(err){
+        console.log('error: ', err)
+      }
+      else{
+        res.json({ message: 'Deleted This Disclaimer' })
+      }
+    })
   } catch(err) {
     res.status(500).json({ message: err.message })
   }

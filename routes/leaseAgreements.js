@@ -44,7 +44,7 @@ router.put('/:id', getLeaseAgreement, async (req, res) => {
   try {
     const updatedLeaseAgreement = await res.leaseAgreement.save()
     res.json(updatedLeaseAgreement)
-  } catch {
+  } catch(err) {
     res.status(400).json({ message: err.message })
   }
 

@@ -70,7 +70,7 @@ router.put('/:id', getVehicle, async (req, res) => {
   try {
     const updatedVehicle = await res.vehicle.save()
     res.json(updatedVehicle)
-  } catch {
+  } catch(err) {
     res.status(400).json({ message: err.message })
   }
 

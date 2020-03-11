@@ -44,7 +44,7 @@ router.put('/:id', getPayment, async (req, res) => {
   try {
     const updatedPayment = await res.payment.save()
     res.json(updatedPayment)
-  } catch {
+  } catch(err) {
     res.status(400).json({ message: err.message })
   }
 
