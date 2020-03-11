@@ -3,16 +3,6 @@ uuid = require('uuid');
 
 const Client =  kafka.KafkaClient;
 
-// const client = new Client(process.env.KAFKA_HOST, 8, {
-//    sessionTimeout: 300,
-//    spinDelay: 100,
-//    retries: 2
-// });
-// const client = new Client({
-//     autoConnect: false,
-//     KafkaHost: process.env.KAFKA_HOST
-// });
-
 const client = new Client(process.env.HOST)
 
 const producer = new kafka.HighLevelProducer(client);
