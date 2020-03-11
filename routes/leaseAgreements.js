@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const LeaseAgreement = require('../models/leaseAgreement')
+const kafkaSend = require('../service/kafka-producer');
 
 // Getting all subscribers
 router.get('/', async (req, res) => {
@@ -21,7 +22,21 @@ router.post('/', async (req, res) => {
 
   try {
     const newLeaseAgreement = await leaseAgreement.save()
-    res.status(201).json(newLeaseAgreement)
+    const {_id} = newLeaseAgreement
+    let queue = {
+      entity: 'LeaseAgreement',
+      id: _id,
+      before: null,
+      after: newLeaseAgreement
+    }
+    kafkaSend.sendRecord(queue, function(err, data){
+      if(err){
+        console.log('error: ', err)
+      }
+      else{
+        res.status(201).json(newLeaseAgreement)
+      }
+    })
   } catch (err) {
     res.status(400).json({ message: err.message })
   }
@@ -42,8 +57,22 @@ router.put('/:id', getLeaseAgreement, async (req, res) => {
     res.leaseAgreement.termLength = req.body.termLength
   }
   try {
+    const {_id} = res.leaseAgreement
+    let queue = {
+      entity: 'LeaseAgreement',
+      id: _id,
+      before: res.leaseAgreement
+    }
     const updatedLeaseAgreement = await res.leaseAgreement.save()
-    res.json(updatedLeaseAgreement)
+    Object.assign(queue, {after: updatedLeaseAgreement})
+    kafkaSend.sendRecord(queue, function(err, data){
+      if(err){
+        console.log('error: ', err)
+      }
+      else{
+        res.json(updatedLeaseAgreement)
+      }
+    })
   } catch(err) {
     res.status(400).json({ message: err.message })
   }
@@ -52,8 +81,22 @@ router.put('/:id', getLeaseAgreement, async (req, res) => {
 // Deleting one leaseAgreement
 router.delete('/:id', getLeaseAgreement, async (req, res) => {
   try {
-    await res.leaseAgreement.remove()
-    res.json({ message: 'Deleted This LeaseAgreement' })
+    const leaseAgreement = await res.leaseAgreement.remove()
+    const {_id} = leaseAgreement
+    let queue = {
+      entity: 'LeaseAgreement',
+      id: _id,
+      before: leaseAgreement,
+      after: null
+    }
+    kafkaSend.sendRecord(queue, function(err, data){
+      if(err){
+        console.log('error: ', err)
+      }
+      else{
+        res.json({ message: 'Deleted This LeaseAgreement' })
+      }
+    })
   } catch(err) {
     res.status(500).json({ message: err.message })
   }

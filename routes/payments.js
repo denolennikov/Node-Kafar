@@ -21,7 +21,21 @@ router.post('/', async (req, res) => {
 
   try {
     const newPayment = await payment.save()
-    res.status(201).json(newPayment)
+    const {_id} = newPayment
+    let queue = {
+      entity: 'Payment',
+      id: _id,
+      before: null,
+      after: newPayment
+    }
+    kafkaSend.sendRecord(queue, function(err, data){
+      if(err){
+        console.log('error: ', err)
+      }
+      else{
+        res.status(201).json(newPayment)
+      }
+    })
   } catch (err) {
     res.status(400).json({ message: err.message })
   }
@@ -41,9 +55,24 @@ router.put('/:id', getPayment, async (req, res) => {
   if (req.body.amount != null) {
     res.payment.amount = req.body.amount
   }
+
   try {
+    const {_id} = res.payment
+    let queue = {
+      entity: 'Payment',
+      id: _id,
+      before: res.payment
+    }
     const updatedPayment = await res.payment.save()
-    res.json(updatedPayment)
+    Object.assign(queue, {after: updatedPayment})
+    kafkaSend.sendRecord(queue, function(err, data){
+      if(err){
+        console.log('error: ', err)
+      }
+      else{
+        res.json(updatedPayment)
+      }
+    })
   } catch(err) {
     res.status(400).json({ message: err.message })
   }
@@ -52,8 +81,22 @@ router.put('/:id', getPayment, async (req, res) => {
 // Deleting one payment
 router.delete('/:id', getPayment, async (req, res) => {
   try {
-    await res.payment.remove()
-    res.json({ message: 'Deleted This Payment' })
+    const payment = await res.payment.remove()
+    const {_id} = payment
+    let queue = {
+      entity: 'Payment',
+      id: _id,
+      before: payment,
+      after: null
+    }
+    kafkaSend.sendRecord(queue, function(err, data){
+      if(err){
+        console.log('error: ', err)
+      }
+      else{
+        res.json({ message: 'Deleted This Payment' })
+      }
+    })
   } catch(err) {
     res.status(500).json({ message: err.message })
   }

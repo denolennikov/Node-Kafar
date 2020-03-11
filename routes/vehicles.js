@@ -26,7 +26,21 @@ router.post('/', async (req, res) => {
 
   try {
     const newVehicle = await vehicle.save()
-    res.status(201).json(newVehicle)
+    const {_id} = newVehicle
+    let queue = {
+      entity: 'Vehicle',
+      id: _id,
+      before: null,
+      after: newVehicle
+    }
+    kafkaSend.sendRecord(queue, function(err, data){
+      if(err){
+        console.log('error: ', err)
+      }
+      else{
+        res.status(201).json(newVehicle)
+      }
+    })
   } catch (err) {
     res.status(400).json({ message: err.message })
   }
@@ -68,8 +82,22 @@ router.put('/:id', getVehicle, async (req, res) => {
   }
 
   try {
+    const {_id} = res.vehicle
+    let queue = {
+      entity: 'Vehicle',
+      id: _id,
+      before: res.disclaimer
+    }
     const updatedVehicle = await res.vehicle.save()
-    res.json(updatedVehicle)
+    Object.assign(queue, {after: updatedVehicle})
+    kafkaSend.sendRecord(queue, function(err, data){
+      if(err){
+        console.log('error: ', err)
+      }
+      else{
+        res.json(updatedVehicle)
+      }
+    })
   } catch(err) {
     res.status(400).json({ message: err.message })
   }
@@ -78,8 +106,22 @@ router.put('/:id', getVehicle, async (req, res) => {
 // Deleting one vehicle
 router.delete('/:id', getVehicle, async (req, res) => {
   try {
-    await res.vehicle.remove()
-    res.json({ message: 'Deleted This Vehicle' })
+    const vehicle = await res.vehicle.remove()
+    const {_id} = vehicle
+    let queue = {
+      entity: 'Vehicle',
+      id: _id,
+      before: vehicle,
+      after: null
+    }
+    kafkaSend.sendRecord(queue, function(err, data){
+      if(err){
+        console.log('error: ', err)
+      }
+      else{
+        res.json({ message: 'Deleted This Vehicle' })
+      }
+    })
   } catch(err) {
     res.status(500).json({ message: err.message })
   }
